@@ -180,4 +180,89 @@
     max-width: 100%;
     border-radius: 0.5rem;
   }
+
+  .terminal-cursor {
+    animation: terminal-blink 0.9s steps(2, start) infinite;
+  }
+
+  .terminal-stream {
+    mask-image: linear-gradient(to bottom, transparent 0, black 12%, black 88%, transparent 100%);
+  }
+
+  .terminal-line {
+    animation: terminal-log 7.2s linear infinite;
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  .terminal-line:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .terminal-line:nth-child(2) {
+    animation-delay: 0.5s;
+  }
+
+  .terminal-line:nth-child(3) {
+    animation-delay: 1s;
+  }
+
+  .terminal-line:nth-child(4) {
+    animation-delay: 1.5s;
+  }
+
+  .terminal-line:nth-child(5) {
+    animation-delay: 2s;
+  }
+
+  .terminal-line:nth-child(6) {
+    animation-delay: 2.5s;
+  }
+
+  .terminal-line:nth-child(7) {
+    animation-delay: 3s;
+  }
+
+  .terminal-line:nth-child(8) {
+    animation-delay: 3.5s;
+  }
+
+  .terminal-line:nth-child(9) {
+    animation-delay: 4s;
+  }
+
+  .terminal-line:nth-child(10) {
+    animation-delay: 4.5s;
+  }
+}
+
+@keyframes terminal-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes terminal-log {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  8%,
+  62% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
 }

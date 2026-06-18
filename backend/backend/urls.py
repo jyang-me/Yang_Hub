@@ -18,12 +18,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 
 from accounts.views import CurrentUserView
+from blog.models import Post
 from blog.views import CategoryViewSet, PostViewSet, TagViewSet
+from contact.models import Message
 from contact.views import MessageViewSet
+from portfolio.models import Project
 from portfolio.views import ProjectViewSet
 
 router = DefaultRouter()
@@ -33,10 +39,24 @@ router.register('posts', PostViewSet)
 router.register('projects', ProjectViewSet)
 router.register('messages', MessageViewSet)
 
+
+class StatsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                'posts_count': Post.objects.filter(status='published').count(),
+                'projects_count': Project.objects.count(),
+                'messages_count': Message.objects.count(),
+            }
+        )
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/token/', obtain_auth_token),
     path('api/auth/me/', CurrentUserView.as_view()),
+    path('api/stats/', StatsView.as_view()),
     path('api/', include(router.urls)),
 ]
 
