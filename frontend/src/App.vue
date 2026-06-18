@@ -3,7 +3,7 @@
     <header class="border-b border-slate-200 bg-white">
       <nav class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <RouterLink to="/" class="text-xl font-semibold tracking-normal text-slate-950">
-          My Blog
+          YangHub
         </RouterLink>
 
         <div class="flex flex-wrap gap-2 text-sm font-medium text-slate-600">

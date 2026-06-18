@@ -61,7 +61,7 @@ const router = createRouter({
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} - My Blog` : 'My Blog'
+  document.title = to.meta.title ? `${to.meta.title} - YangHub` : 'YangHub'
 })
 
 export default router
