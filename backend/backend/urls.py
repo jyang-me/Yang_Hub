@@ -53,7 +53,7 @@ class StatsView(APIView):
         )
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(settings.DJANGO_ADMIN_PATH, admin.site.urls),
     path('api/auth/token/', obtain_auth_token),
     path('api/auth/me/', CurrentUserView.as_view()),
     path('api/stats/', StatsView.as_view()),

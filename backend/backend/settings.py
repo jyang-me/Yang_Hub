@@ -89,6 +89,8 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 AUTH_USER_MODEL = 'accounts.User'
 
+DJANGO_ADMIN_PATH = os.environ.get('DJANGO_ADMIN_PATH', 'admin/').strip('/') + '/'
+
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
