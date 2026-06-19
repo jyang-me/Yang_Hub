@@ -37,9 +37,12 @@ const markdown = new MarkdownIt({
   typographer: true,
   breaks: true,
   highlight(code, language) {
-    const lang = language && hljs.getLanguage(language) ? language : 'plaintext'
-    const highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
-    return `<pre class="hljs"><code class="language-${lang}">${highlighted}</code></pre>`
+    if (!language || !hljs.getLanguage(language)) {
+      return `<pre class="hljs"><code>${markdown.utils.escapeHtml(code)}</code></pre>`
+    }
+
+    const highlighted = hljs.highlight(code, { language, ignoreIllegals: true }).value
+    return `<pre class="hljs"><code class="language-${language}">${highlighted}</code></pre>`
   },
 })
 
