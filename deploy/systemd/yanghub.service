@@ -1,0 +1,15 @@
+[Unit]
+Description=YangHub Django API
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/yanghub/backend
+EnvironmentFile=/var/www/yanghub/.env
+ExecStart=/var/www/yanghub/.venv/bin/gunicorn backend.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

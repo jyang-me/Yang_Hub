@@ -69,6 +69,10 @@ const categoryName = computed(() => {
 
 const tagList = computed(() => (Array.isArray(post.value?.tags) ? post.value.tags : []))
 
+function normalizeList(payload) {
+  return Array.isArray(payload) ? payload : payload.results || []
+}
+
 function formatDate(value) {
   if (!value) {
     return '未发布'
@@ -83,6 +87,19 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
+async function fetchPostByIdFallback(id) {
+  const listResponse = await request.get('/posts/')
+  const posts = normalizeList(listResponse.data)
+  const matchedPost = posts.find((item) => String(item.id) === String(id))
+
+  if (!matchedPost?.slug) {
+    throw new Error('Post not found')
+  }
+
+  const detailResponse = await request.get(`/posts/${matchedPost.slug}/`)
+  return detailResponse.data
+}
+
 async function fetchPost() {
   loading.value = true
   error.value = ''
@@ -92,8 +109,12 @@ async function fetchPost() {
     const response = await request.get(`/posts/${props.id}/`)
     post.value = response.data
   } catch (err) {
-    error.value = '文章详情加载失败，请确认文章是否存在。'
-    console.error('Failed to fetch post:', err)
+    try {
+      post.value = await fetchPostByIdFallback(props.id)
+    } catch (fallbackError) {
+      error.value = '文章详情加载失败，请确认文章是否存在或已经发布。'
+      console.error('Failed to fetch post:', err, fallbackError)
+    }
   } finally {
     loading.value = false
   }
@@ -156,7 +177,8 @@ watch(() => props.id, fetchPost)
         </div>
       </header>
 
-      <div class="markdown-body mt-8" v-html="renderedContent"></div>
+      <div v-if="renderedContent" class="markdown-body mt-8" v-html="renderedContent"></div>
+      <p v-else class="mt-8 text-slate-600">这篇文章暂时没有正文内容。</p>
     </template>
   </article>
 </template>

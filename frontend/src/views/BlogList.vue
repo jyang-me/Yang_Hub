@@ -12,8 +12,12 @@ const publishedPosts = computed(() =>
   posts.value.filter((post) => post.status === 'published' || !post.status),
 )
 
-function getPostsPayload(payload) {
+function normalizeList(payload) {
   return Array.isArray(payload) ? payload : payload.results || []
+}
+
+function getPostRouteParam(post) {
+  return post.slug || post.id
 }
 
 function formatDate(value) {
@@ -34,7 +38,7 @@ async function fetchPosts() {
 
   try {
     const response = await request.get('/posts/')
-    posts.value = getPostsPayload(response.data)
+    posts.value = normalizeList(response.data)
   } catch (err) {
     error.value = '文章列表加载失败，请稍后重试。'
     console.error('Failed to fetch posts:', err)
@@ -88,7 +92,7 @@ onMounted(fetchPosts)
         </div>
 
         <RouterLink
-          :to="{ name: 'BlogDetail', params: { id: post.id } }"
+          :to="{ name: 'BlogDetail', params: { id: getPostRouteParam(post) } }"
           class="mt-4 text-xl font-bold leading-snug text-slate-950 transition-colors duration-200 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
         >
           {{ post.title }}
@@ -109,7 +113,7 @@ onMounted(fetchPosts)
         </div>
 
         <RouterLink
-          :to="{ name: 'BlogDetail', params: { id: post.id } }"
+          :to="{ name: 'BlogDetail', params: { id: getPostRouteParam(post) } }"
           class="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-blue-700 transition-colors duration-200 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
         >
           阅读全文
