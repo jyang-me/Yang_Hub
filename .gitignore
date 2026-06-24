@@ -13,3 +13,4 @@ frontend/dist/
 *.log
 .env
 .env.*
+nul

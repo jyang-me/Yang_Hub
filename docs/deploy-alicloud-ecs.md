@@ -1,83 +1,93 @@
-# 阿里云 ECS 部署 YangHub
+# Linux 服务器部署 YangHub
 
-本文档适用于一台 Linux 服务器同时部署前端和后端：
+本文档适用于 Ubuntu 服务器，当前线上域名为：
 
-- Nginx：对外提供网站、静态文件和反向代理
-- Vue 3/Vite：构建为静态文件，由 Nginx 托管
-- Django/DRF：由 Gunicorn 运行在 `127.0.0.1:8000`
-- SQLite：可用于轻量个人站点；长期生产建议迁移 PostgreSQL
+```text
+http://jyang.online/
+```
 
-## 1. 购买服务器建议
+服务器当前项目路径约定为：
 
-阿里云 ECS 推荐选择：
+```text
+/var/www/Yang_Hub
+```
 
-- 系统：Ubuntu 22.04 LTS 或 Ubuntu 24.04 LTS
-- 规格：个人网站可从 1 核 2G 起步
-- 带宽：1Mbps 到 3Mbps 起步，后续按访问量升级
-- 安全组：放行 `22`、`80`、`443`
+## 1. 服务器准备
 
-如果暂时没有域名，可以先用公网 IP 访问。后续绑定域名后再配置 HTTPS。
+推荐配置：
 
-## 2. 安装基础环境
+- Ubuntu 22.04 LTS 或 Ubuntu 24.04 LTS
+- 1 核 2G 起步
+- 安全组/防火墙开放 `22`、`80`、`443`
 
 登录服务器：
 
 ```bash
-ssh root@你的服务器公网IP
+ssh ubuntu@124.220.61.43
 ```
 
-安装依赖：
+安装基础依赖：
 
 ```bash
-apt update
-apt install -y git nginx python3 python3-venv python3-pip nodejs npm
+sudo apt update
+sudo apt install -y git nginx python3 python3-venv python3-pip nodejs npm
 ```
 
-建议安装 Node.js 20：
+Vite 需要较新的 Node.js，建议升级到 Node 20：
 
 ```bash
-npm install -g n
-n 20
+sudo npm install -g n
+sudo n 20
 hash -r
 node -v
 npm -v
 ```
 
-## 3. 拉取项目
+## 2. 拉取项目
 
 ```bash
-mkdir -p /var/www
+sudo mkdir -p /var/www
+sudo chown -R ubuntu:ubuntu /var/www
 cd /var/www
-git clone https://github.com/jyang-me/Yang_Hub.git yanghub
-cd yanghub
+git clone https://github.com/jyang-me/Yang_Hub.git Yang_Hub
+cd Yang_Hub
 ```
 
-## 4. 配置后端环境变量
-
-在 `/var/www/yanghub/.env` 创建生产配置：
+如果 GitHub 连接不稳定，可以临时使用镜像：
 
 ```bash
-nano /var/www/yanghub/.env
+git clone https://gh.llkk.cc/https://github.com/jyang-me/Yang_Hub.git Yang_Hub
 ```
 
-示例：
+## 3. 配置环境变量
 
-```text
+创建 `/var/www/Yang_Hub/.env`：
+
+```bash
+cat > /var/www/Yang_Hub/.env <<'EOF'
 DJANGO_DEBUG=False
-DJANGO_SECRET_KEY=换成一个很长的随机字符串
-DJANGO_ALLOWED_HOSTS=你的域名,你的服务器公网IP
-DJANGO_CORS_ALLOWED_ORIGINS=http://你的域名,http://你的服务器公网IP
-DJANGO_CSRF_TRUSTED_ORIGINS=http://你的域名,http://你的服务器公网IP
+DJANGO_SECRET_KEY=replace-this-with-a-long-random-secret
+DJANGO_ADMIN_PATH=manage-yanghub-9527/
+DJANGO_ALLOWED_HOSTS=jyang.online,www.jyang.online,124.220.61.43,127.0.0.1,localhost
+DJANGO_CORS_ALLOWED_ORIGINS=http://jyang.online,http://www.jyang.online,http://124.220.61.43
+DJANGO_CSRF_TRUSTED_ORIGINS=http://jyang.online,http://www.jyang.online,http://124.220.61.43
+DJANGO_SESSION_COOKIE_SECURE=False
+DJANGO_CSRF_COOKIE_SECURE=False
 DJANGO_SECURE_SSL_REDIRECT=False
 DJANGO_SECURE_HSTS_SECONDS=0
+EOF
 ```
 
-如果暂时只有公网 IP，就把域名部分换成公网 IP。
+说明：
 
-## 5. 部署 Django 后端
+- 当前是 HTTP，Cookie Secure 相关配置保持 `False`
+- 绑定 HTTPS 后再把 `DJANGO_SESSION_COOKIE_SECURE`、`DJANGO_CSRF_COOKIE_SECURE`、`DJANGO_SECURE_SSL_REDIRECT` 改为 `True`
+- 后台入口由 `DJANGO_ADMIN_PATH` 控制
+
+## 4. 部署后端
 
 ```bash
-cd /var/www/yanghub
+cd /var/www/Yang_Hub
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -89,114 +99,89 @@ python manage.py collectstatic --no-input
 python manage.py createsuperuser
 ```
 
-配置权限：
+## 5. 配置 systemd
 
 ```bash
-chown -R www-data:www-data /var/www/yanghub
+sudo cp /var/www/Yang_Hub/deploy/systemd/yanghub.service /etc/systemd/system/yanghub.service
+sudo systemctl daemon-reload
+sudo systemctl enable yanghub
+sudo systemctl start yanghub
+sudo systemctl status yanghub
 ```
 
-## 6. 配置 systemd 后端服务
-
-复制服务文件：
+检查后端 API：
 
 ```bash
-cp /var/www/yanghub/deploy/systemd/yanghub.service /etc/systemd/system/yanghub.service
-systemctl daemon-reload
-systemctl enable yanghub
-systemctl start yanghub
-systemctl status yanghub
+curl http://127.0.0.1:8000/api/
 ```
 
-查看日志：
+## 6. 构建前端
+
+生产环境前端默认请求同域名 `/api`，不需要额外设置 `VITE_API_BASE_URL`。
 
 ```bash
-journalctl -u yanghub -f
-```
-
-## 7. 构建前端
-
-如果前后端使用同一个域名，前端不需要额外设置 `VITE_API_BASE_URL`，生产环境会默认请求同域名 `/api`。
-
-```bash
-cd /var/www/yanghub/frontend
+cd /var/www/Yang_Hub/frontend
 npm install
 npm run build
 ```
 
-## 8. 配置 Nginx
-
-复制 Nginx 配置：
-
-```bash
-cp /var/www/yanghub/deploy/nginx/yanghub.conf /etc/nginx/sites-available/yanghub
-```
-
-编辑域名或公网 IP：
-
-```bash
-nano /etc/nginx/sites-available/yanghub
-```
-
-把：
+构建产物：
 
 ```text
-server_name your-domain.com www.your-domain.com;
+/var/www/Yang_Hub/frontend/dist
 ```
 
-改成：
+## 7. 配置 Nginx
+
+复制配置：
+
+```bash
+sudo cp /var/www/Yang_Hub/deploy/nginx/yanghub.conf /etc/nginx/sites-available/yanghub
+sudo ln -sf /etc/nginx/sites-available/yanghub /etc/nginx/sites-enabled/yanghub
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+当前 Nginx 配置要点：
 
 ```text
-server_name 你的域名 你的服务器公网IP;
+/                       -> Vue 前端
+/api/                   -> Django API
+/manage-yanghub-9527/   -> Django Admin
+/admin/                 -> 404
+/media/                 -> 上传文件
+/static/                -> Django 静态文件
 ```
 
-启用站点：
-
-```bash
-ln -s /etc/nginx/sites-available/yanghub /etc/nginx/sites-enabled/yanghub
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl reload nginx
-```
-
-现在可以访问：
+访问：
 
 ```text
-http://你的服务器公网IP/
-http://你的服务器公网IP/admin/
-http://你的服务器公网IP/api/
+http://jyang.online/
+http://jyang.online/api/
+http://jyang.online/manage-yanghub-9527/
 ```
 
-## 9. 配置 HTTPS
+## 8. 后续更新代码
 
-域名解析到 ECS 公网 IP 后，可以使用 Certbot：
+更新前端：
 
 ```bash
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d 你的域名
+cd /var/www/Yang_Hub
+git pull
+
+cd frontend
+rm -rf dist
+npm install
+npm run build
+
+sudo systemctl reload nginx
 ```
 
-HTTPS 配好后，把 `.env` 中的来源改成 `https`：
-
-```text
-DJANGO_ALLOWED_HOSTS=你的域名
-DJANGO_CORS_ALLOWED_ORIGINS=https://你的域名
-DJANGO_CSRF_TRUSTED_ORIGINS=https://你的域名
-DJANGO_SECURE_SSL_REDIRECT=True
-```
-
-然后重启后端：
+更新后端：
 
 ```bash
-systemctl restart yanghub
-systemctl reload nginx
-```
-
-## 10. 更新代码
-
-后续更新网站：
-
-```bash
-cd /var/www/yanghub
+cd /var/www/Yang_Hub
 git pull
 
 source .venv/bin/activate
@@ -205,49 +190,84 @@ cd backend
 python manage.py migrate
 python manage.py collectstatic --no-input
 
-cd ../frontend
-npm install
+sudo systemctl restart yanghub
+sudo systemctl reload nginx
+```
+
+## 9. 后台管理
+
+后台入口：
+
+```text
+http://jyang.online/manage-yanghub-9527/
+```
+
+`/admin/` 已被 Nginx 禁用。
+
+如果后台能打开但无法保存，优先检查：
+
+```bash
+cat /var/www/Yang_Hub/.env
+sudo systemctl restart yanghub
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+当前 HTTP 阶段必须保持：
+
+```text
+DJANGO_SESSION_COOKIE_SECURE=False
+DJANGO_CSRF_COOKIE_SECURE=False
+```
+
+## 10. 数据同步排查
+
+后台更新项目或文章后，先检查 API：
+
+```text
+http://jyang.online/api/projects/
+http://jyang.online/api/posts/
+```
+
+如果 API 是新数据，但前端页面没变：
+
+```bash
+cd /var/www/Yang_Hub/frontend
+rm -rf dist
 npm run build
-
-systemctl restart yanghub
-systemctl reload nginx
+sudo systemctl reload nginx
 ```
 
-## 常见问题
+然后浏览器按 `Ctrl + F5`。
 
-### 后台打不开
+如果图片不显示，检查图片地址是否能访问：
 
-检查 Django 服务：
+```text
+http://jyang.online/media/...
+```
+
+## 11. HTTPS
+
+域名解析稳定后，可以申请证书：
 
 ```bash
-systemctl status yanghub
-journalctl -u yanghub -n 100
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d jyang.online -d www.jyang.online
 ```
 
-### 首页能打开，但接口报错
+HTTPS 正常后再修改 `.env`：
 
-检查 Nginx 反向代理：
+```text
+DJANGO_CORS_ALLOWED_ORIGINS=https://jyang.online,https://www.jyang.online
+DJANGO_CSRF_TRUSTED_ORIGINS=https://jyang.online,https://www.jyang.online
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+DJANGO_SECURE_SSL_REDIRECT=True
+```
+
+重启：
 
 ```bash
-nginx -t
-curl http://127.0.0.1:8000/api/
-curl http://127.0.0.1/api/
+sudo systemctl restart yanghub
+sudo systemctl reload nginx
 ```
-
-### 上传图片无法显示
-
-确认 Nginx 配置中存在：
-
-```nginx
-location /media/ {
-    alias /var/www/yanghub/backend/media/;
-}
-```
-
-### 服务器安全组
-
-阿里云 ECS 安全组需要放行：
-
-- `22`：SSH 登录
-- `80`：HTTP
-- `443`：HTTPS

@@ -4,6 +4,7 @@ import MarkdownIt from 'markdown-it'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import { getAssetUrl } from '../api/assets'
 import request from '../api/request'
 
 const props = defineProps({
@@ -40,21 +41,30 @@ const techTags = computed(() => {
   }
 
   return project.value.tech_stack
-    .split(/[\/,，、|]/)
+    .split(/[\/,，、]/)
     .map((tag) => tag.trim())
     .filter(Boolean)
 })
 
+function normalizeList(payload) {
+  return Array.isArray(payload) ? payload : payload.results || []
+}
+
 function getImageUrl(projectData) {
-  if (!projectData?.cover_image) {
-    return ''
+  return getAssetUrl(projectData?.cover_image)
+}
+
+async function fetchProjectByIdFallback(id) {
+  const listResponse = await request.get('/projects/')
+  const projects = normalizeList(listResponse.data)
+  const matchedProject = projects.find((item) => String(item.id) === String(id))
+
+  if (!matchedProject?.slug) {
+    throw new Error('Project not found')
   }
 
-  if (projectData.cover_image.startsWith('http')) {
-    return projectData.cover_image
-  }
-
-  return `http://127.0.0.1:8000${projectData.cover_image}`
+  const detailResponse = await request.get(`/projects/${matchedProject.slug}/`)
+  return detailResponse.data
 }
 
 async function fetchProject() {
@@ -66,8 +76,12 @@ async function fetchProject() {
     const response = await request.get(`/projects/${props.id}/`)
     project.value = response.data
   } catch (err) {
-    error.value = '项目详情加载失败，请确认项目是否存在。'
-    console.error('Failed to fetch project:', err)
+    try {
+      project.value = await fetchProjectByIdFallback(props.id)
+    } catch (fallbackError) {
+      error.value = '项目详情加载失败，请确认项目是否存在。'
+      console.error('Failed to fetch project:', err, fallbackError)
+    }
   } finally {
     loading.value = false
   }

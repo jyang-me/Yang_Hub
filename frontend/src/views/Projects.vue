@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import { getAssetUrl } from '../api/assets'
 import request from '../api/request'
 
 const projects = ref([])
@@ -10,20 +11,16 @@ const error = ref('')
 
 const projectCount = computed(() => projects.value.length)
 
-function getProjectsPayload(payload) {
+function normalizeList(payload) {
   return Array.isArray(payload) ? payload : payload.results || []
 }
 
+function getProjectRouteParam(project) {
+  return project.slug || project.id
+}
+
 function getImageUrl(project) {
-  if (!project.cover_image) {
-    return ''
-  }
-
-  if (project.cover_image.startsWith('http')) {
-    return project.cover_image
-  }
-
-  return `http://127.0.0.1:8000${project.cover_image}`
+  return getAssetUrl(project.cover_image)
 }
 
 function getTechTags(project) {
@@ -32,7 +29,7 @@ function getTechTags(project) {
   }
 
   return project.tech_stack
-    .split(/[\/,，、|]/)
+    .split(/[\/,，、]/)
     .map((tag) => tag.trim())
     .filter(Boolean)
 }
@@ -43,7 +40,7 @@ async function fetchProjects() {
 
   try {
     const response = await request.get('/projects/')
-    projects.value = getProjectsPayload(response.data)
+    projects.value = normalizeList(response.data)
   } catch (err) {
     error.value = '项目数据加载失败，请稍后重试。'
     console.error('Failed to fetch projects:', err)
@@ -65,7 +62,16 @@ onMounted(fetchProjects)
           这里展示从 Django REST Framework 后端接口异步获取的项目作品，包括图片、简介、技术栈和源码链接。
         </p>
       </div>
-      <p class="text-sm font-semibold text-slate-500">{{ projectCount }} 个项目</p>
+      <div class="flex items-center gap-3">
+        <p class="text-sm font-semibold text-slate-500">{{ projectCount }} 个项目</p>
+        <button
+          type="button"
+          class="inline-flex min-h-10 items-center rounded-md border border-slate-200 px-3 text-sm font-bold text-slate-700 transition-colors duration-200 hover:bg-slate-100"
+          @click="fetchProjects"
+        >
+          刷新
+        </button>
+      </div>
     </header>
 
     <div v-if="loading" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="正在加载项目">
@@ -93,7 +99,7 @@ onMounted(fetchProjects)
       >
         <div class="flex w-full flex-col">
           <RouterLink
-            :to="{ name: 'ProjectDetail', params: { id: project.id } }"
+            :to="{ name: 'ProjectDetail', params: { id: getProjectRouteParam(project) } }"
             class="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
           >
             <img
@@ -113,14 +119,14 @@ onMounted(fetchProjects)
 
           <div class="flex flex-1 flex-col p-5">
             <RouterLink
-              :to="{ name: 'ProjectDetail', params: { id: project.id } }"
+              :to="{ name: 'ProjectDetail', params: { id: getProjectRouteParam(project) } }"
               class="text-xl font-bold leading-snug text-slate-950 transition-colors duration-200 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
             >
               {{ project.title }}
             </RouterLink>
 
             <p class="mt-3 line-clamp-5 flex-1 text-sm leading-6 text-slate-600">
-              {{ project.summary || project.description || '这个项目暂时没有简述。' }}
+              {{ project.summary || project.description || '这个项目暂时没有简介。' }}
             </p>
 
             <div v-if="getTechTags(project).length" class="mt-5 flex flex-wrap gap-2">
@@ -135,7 +141,7 @@ onMounted(fetchProjects)
 
             <div class="mt-6 flex flex-wrap gap-3">
               <RouterLink
-                :to="{ name: 'ProjectDetail', params: { id: project.id } }"
+                :to="{ name: 'ProjectDetail', params: { id: getProjectRouteParam(project) } }"
                 class="inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 text-sm font-bold text-white transition-colors duration-200 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 查看详情

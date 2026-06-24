@@ -3,11 +3,11 @@ Description=YangHub Django API
 After=network.target
 
 [Service]
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/yanghub/backend
-EnvironmentFile=/var/www/yanghub/.env
-ExecStart=/var/www/yanghub/.venv/bin/gunicorn backend.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 120
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/Yang_Hub/backend
+EnvironmentFile=/var/www/Yang_Hub/.env
+ExecStart=/var/www/Yang_Hub/.venv/bin/gunicorn backend.wsgi:application --bind 127.0.0.1:8000 --workers 2 --timeout 120
 Restart=always
 RestartSec=5
 

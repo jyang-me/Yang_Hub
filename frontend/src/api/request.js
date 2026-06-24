@@ -13,6 +13,14 @@ request.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore()
 
+    if (config.method?.toLowerCase() === 'get') {
+      config.headers['Cache-Control'] = 'no-cache'
+      config.params = {
+        ...config.params,
+        _t: Date.now(),
+      }
+    }
+
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
