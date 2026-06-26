@@ -2,11 +2,31 @@
 
 YangHub 是一个前后端分离的个人技术网站，用于展示首页简介、技术博客、项目作品和联系留言。
 
-当前线上域名：
+## 当前访问地址
+
+域名 `jyang.online` 目前处于备案流程中，备案完成前暂时使用服务器公网 IP 访问。
+
+线上访问地址：
 
 ```text
-http://jyang.online/
+前端网站：http://124.220.61.43/
+后端 API：http://124.220.61.43/api/
+后台入口：http://124.220.61.43/manage-yanghub-9527/
 ```
+
+备案完成并完成域名解析后，计划使用：
+
+```text
+前端网站：http://jyang.online/
+后端 API：http://jyang.online/api/
+后台入口：http://jyang.online/manage-yanghub-9527/
+```
+
+说明：
+
+- `/admin/` 已由 Nginx 返回 404，不作为公开后台入口。
+- Django Admin 仍需要管理员账号登录。
+- 当前还未启用 HTTPS，后台登录和管理建议尽快在备案完成后配置 HTTPS。
 
 ## 技术栈
 
@@ -28,20 +48,20 @@ http://jyang.online/
 - django-cors-headers
 - WhiteNoise
 - Gunicorn
-- SQLite 本地/轻量部署，生产可迁移 PostgreSQL
+- SQLite，后续可迁移到 PostgreSQL
 
 部署：
 
-- Linux 服务器：腾讯云/阿里云 Ubuntu
-- Nginx：托管前端静态文件，并反向代理 `/api/`、后台、`/media/`
-- systemd：守护 Django Gunicorn 服务
+- Ubuntu Linux 服务器
+- Nginx 托管前端静态文件，并反向代理后端接口
+- systemd 守护 Django Gunicorn 服务
 
 ## 架构
 
 ```text
 Browser
   |
-  | http://jyang.online/
+  | http://124.220.61.43/
   v
 Nginx
   |-- /                      -> frontend/dist
@@ -133,15 +153,15 @@ npm run dev
 后台：http://127.0.0.1:8000/admin/
 ```
 
-## 线上部署要点
+## 线上部署
 
-服务器当前约定路径：
+服务器项目路径：
 
 ```text
 /var/www/Yang_Hub
 ```
 
-后端 systemd 服务：
+后端服务：
 
 ```bash
 sudo systemctl status yanghub
@@ -199,45 +219,33 @@ DJANGO_SECURE_SSL_REDIRECT=False
 DJANGO_SECURE_HSTS_SECONDS=0
 ```
 
-当前还在 HTTP 阶段，所以 `DJANGO_SESSION_COOKIE_SECURE` 和 `DJANGO_CSRF_COOKIE_SECURE` 保持 `False`。绑定 HTTPS 后再改为 `True`。
-
-## 后台入口
-
-公开 `/admin/` 已由 Nginx 返回 404。
-
-后台入口：
-
-```text
-http://jyang.online/manage-yanghub-9527/
-```
-
-Django Admin 仍然需要管理员账号登录。浏览器如果之前登录过，可能会因为 Cookie 仍有效而直接进入后台；用无痕窗口访问可验证是否要求登录。
+当前仍是 HTTP 阶段，所以 `DJANGO_SESSION_COOKIE_SECURE` 和 `DJANGO_CSRF_COOKIE_SECURE` 保持 `False`。配置 HTTPS 后再改为 `True`。
 
 ## 数据同步说明
 
 后台新增或修改文章/项目后：
 
-1. 后端数据库立即更新
-2. 前端页面刷新后重新请求 `/api/...`
-3. 项目页可点击“刷新”按钮重新拉取数据
+1. 后端数据库立即更新。
+2. 前端页面刷新后重新请求 `/api/...`。
+3. 项目页可点击“刷新”按钮重新拉取数据。
 
-如果前端没有同步，按顺序检查：
+如果前端没有同步，先检查接口：
 
 ```text
-http://jyang.online/api/projects/
-http://jyang.online/api/posts/
+http://124.220.61.43/api/projects/
+http://124.220.61.43/api/posts/
 ```
 
 如果 API 已经是新数据，但页面没变：
 
-- 浏览器按 `Ctrl + F5`
-- 确认服务器已重新构建前端
-- 确认前端不是旧 JS 缓存
+- 浏览器按 `Ctrl + F5`。
+- 确认服务器已经重新构建前端。
+- 确认前端不是旧 JS 缓存。
 
 如果图片不显示，检查：
 
 ```text
-http://jyang.online/media/...
+http://124.220.61.43/media/...
 ```
 
 并确认 Nginx 有：
@@ -246,6 +254,24 @@ http://jyang.online/media/...
 location /media/ {
     alias /var/www/Yang_Hub/backend/media/;
 }
+```
+
+## HTTPS 计划
+
+备案完成、域名解析稳定后：
+
+1. 使用 Certbot 为 `jyang.online` 和 `www.jyang.online` 配置 HTTPS。
+2. 将 `.env` 中的来源从 `http` 改为 `https`。
+3. 将 Cookie Secure 配置改为 `True`。
+
+示例：
+
+```text
+DJANGO_CORS_ALLOWED_ORIGINS=https://jyang.online,https://www.jyang.online
+DJANGO_CSRF_TRUSTED_ORIGINS=https://jyang.online,https://www.jyang.online
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+DJANGO_SECURE_SSL_REDIRECT=True
 ```
 
 ## 常用测试
